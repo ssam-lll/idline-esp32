@@ -1,0 +1,31 @@
+# Dependencias y compilación de Firmware (ESP32 / PlatformIO / Arduino)
+.pio/
+.pioenvs/
+.piolibdeps/
+build/
+*.bin
+*.elf
+*.hex
+
+# IDEs y editores
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Python (herramientas en tools/)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Sistema Operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Repositorio externo de referencia (clon local de https://github.com/idrsldev/IDLine)
+reference/idline_original/

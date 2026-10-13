@@ -1,0 +1,211 @@
+### 1. Component List
+- **A**: A (NONE)
+- **U_ESP32**: ESP32-DEVKIT-V1-38PIN (ESP32-DEVKIT-V1-38PIN)
+- **U1**: TB6612FNG Module (TB6612FNG MODULE)
+- **U2**: MINI360BUCK (MINI360)
+- **U3**: CD74HC4067 module FL (CD74HC4067 MODULE FL)
+- **R1**: 100k (R0603)
+- **R2**: 33k (R0603)
+- **R3**: 10k (R0603)
+- **R4**: 10k (R0603)
+- **C1**: 100nF (C0603)
+- **C2**: 100nF (C0603)
+- **C3**: 470uF (CAP-TH_BD8.0-P3.50-D0.6-FD-H11.5)
+- **SW1**: SW_PUSH (SW-TH_2P-L6.0-W6.0_TC-00102FS-050E)
+- **MOTOR_IZQ**: CONN_N20 (HDR-M-2.54_1X2)
+- **MOTOR_DER**: CONN_N20 (HDR-M-2.54_1X2)
+- **J11**: TFT_ST7789 (HDR-M-2.54_1X8)
+- **SW2**: SW_PUSH (SW-TH_2P-L6.0-W6.0_TC-00102FS-050E)
+- **U5**: J_BARRA_CENTRAL (HDR-TH_11P-P2.54-V-M_3)
+- **J0**: J_IZQ1 (HDR-M-2.54_1X3)
+- **J1**: J_IZQ2 (HDR-M-2.54_1X3)
+- **J2**: J_IZQ3 (HDR-M-2.54_1X3)
+- **J3**: J_IZQ4 (HDR-M-2.54_1X3)
+- **J4**: J_DER4 (HDR-M-2.54_1X3)
+- **J5**: J_DER3 (HDR-M-2.54_1X3)
+- **J6**: J_DER2 (HDR-M-2.54_1X3)
+- **J7**: J_DER1 (HDR-M-2.54_1X3)
+- **C4**: 100 nF (C0603)
+- **U7**: AMS1117-3.3_C22458961 (SOT-223_L6.5-W3.5-P2.30-LS7.0-BR)
+- **D1**: 1N5819G-CA2-R (SOD-123_L2.7-W1.6-LS3.7-RD-3)
+- **C7**: 10 μF (C0805)
+- **R5**: 10k (R0603)
+- **CN1**: XT30PW-M (CONN-TH_XT30PW-M)
+- **SW_EXT**: SWITCH (TH_L7.9-W0.8-P5.08)
+- **C9**: 22μF (CASE-A_3216)
+- **C5**: 100 nF (C0603)
+
+### 2. Nets List
+- **Unnamed_Net_1**: SW_EXT.1, CN1.+
+- **GND**: U2.OUT-
+- **GND**: U2.IN-
+- **GND**: CN1.-
+- **Unnamed_Net_2**: SW_EXT.2, U2.IN+
+- **V_BATT**: R1.2
+- **Unnamed_Net_3**: R2.2, C1.2, R1.1
+- **Unnamed_Net_4**: R2.1, C1.1
+- **V_BATT**: U1.VM
+- **Unnamed_Net_5**: C3.2, C2.2
+- **GND**: U1.GND
+- **GND**: U1.GND
+- **GND**: U1.GND
+- **Unnamed_Net_6**: C2.1, C3.1
+- **GND**: J11.1
+- **VCC_3V3**: J11.2
+- **SPI_SCK**: J11.3
+- **SPI_MOSI**: J11.4
+- **TFT_RST**: J11.5
+- **TFT_DC**: J11.6
+- **TFT_CS**: J11.7
+- **VCC_3V3**: J11.8
+- **GND**: SW1.1
+- **BTN_CALIB**: SW1.2, R3.2
+- **VCC_3V3**: R3.1
+- **VCC_3V3**: R4.1
+- **BTN_START**: SW2.2, R4.2
+- **GND**: SW2.1
+- **VCC_3V3**: U3.VCC
+- **GND**: C4.1, U3.GND
+- **Unnamed_Net_7**: MOTOR_IZQ.2, U1.A2
+- **Unnamed_Net_8**: U2.OUT+, D1.A
+- **GND**: U7.ADJ
+- **VCC_3V3**: U7.OUT
+- **Unnamed_Net_9**: C7.1, C9.2
+- **STBY**: U1.STBY
+- **GND**: J4.3
+- **VCC_3V3**: J4.1
+- **S12**: J4.2
+- **Unnamed_Net_10**: MOTOR_IZQ.1, U1.A1
+- **Unnamed_Net_11**: U1.B2, MOTOR_DER.2
+- **Unnamed_Net_12**: U1.B1, MOTOR_DER.1
+- **5V**: U7.IN, C7.2
+- **VCC_3V3**: U1.VCC
+- **GND**: U_ESP32.GND
+- **M1_PWM**: U_ESP32.P4
+- **TFT_RST**: U_ESP32.RX2/P16
+- **M2_PWM**: U_ESP32.TX2/P17
+- **TFT_CS**: U_ESP32.CS/P5
+- **SPI_SCK**: U_ESP32.SCK/P18
+- **TFT_DC**: U_ESP32.MISO/P19
+- **M1_IN1**: U_ESP32.SDA/P21
+- **M1_IN2**: U_ESP32.SCL/P22
+- **SPI_MOSI**: U_ESP32.MOSI/P23
+- **5V**: U_ESP32.VIN
+- **MUX_S2**: U_ESP32.P13
+- **STBY**: U_ESP32.P12
+- **MUX_S1**: U_ESP32.P14
+- **MUX_S0**: U_ESP32.P27
+- **M2_IN2**: U_ESP32.P26
+- **M2_IN1**: U_ESP32.P25
+- **BTN_START**: U_ESP32.P33
+- **BTN_CALIB**: U_ESP32.P32
+- **MUX_SIG**: U_ESP32.VN
+- **BATT_SENSE**: U_ESP32.VP
+- **GND**: U_ESP32.GND
+- **GND**: U_ESP32.GND
+- **MUX_S3**: U_ESP32.P15
+- **M2_PWM**: U1.PWMB
+- **M2_IN2**: U1.BIN2
+- **M2_IN1**: U1.BIN1
+- **M1_IN1**: U1.AIN1
+- **M1_IN2**: U1.AIN2
+- **M1_PWM**: U1.PWMA
+- **S15**: U3.C15
+- **S14**: U3.C14
+- **S13**: U3.C13
+- **S12**: U3.C12
+- **S11**: U3.C11
+- **S10**: U3.C10
+- **S9**: U3.C9
+- **S8**: U3.C8
+- **S7**: U3.C7
+- **S6**: U3.C6
+- **S5**: U3.C5
+- **S4**: U3.C4
+- **S3**: U3.C3
+- **S2**: U3.C2
+- **S1**: U3.C1
+- **S0**: U3.C0
+- **GND**: U3.EN
+- **MUX_S0**: U3.S0
+- **MUX_S1**: U3.S1
+- **MUX_S2**: U3.S2
+- **MUX_S3**: U3.S3
+- **MUX_SIG**: U3.SIG
+- **GND**: U5.1
+- **VCC_3V3**: U5.2
+- **S4**: U5.3
+- **S5**: U5.4
+- **S6**: U5.5
+- **S7**: U5.6
+- **S8**: U5.7
+- **S9**: U5.8
+- **S10**: U5.9
+- **S11**: U5.10
+- **VCC_3V3**: U5.11
+- **GND**: J0.3
+- **VCC_3V3**: J0.1
+- **S0**: J0.2
+- **GND**: J1.3
+- **VCC_3V3**: J1.1
+- **S1**: J1.2
+- **GND**: J2.3
+- **VCC_3V3**: J2.1
+- **S2**: J2.2
+- **GND**: J3.3
+- **VCC_3V3**: J3.1
+- **S3**: J3.2
+- **GND**: J5.3
+- **VCC_3V3**: J5.1
+- **S13**: J5.2
+- **GND**: J6.3
+- **VCC_3V3**: J6.1
+- **S14**: J6.2
+- **GND**: J7.3
+- **VCC_3V3**: J7.1
+- **S15**: J7.2
+- **VCC_3V3**: U7.OUT
+- **5V**: D1.C
+- **GND**: R5.1
+
+### 3. Integrity Verification
+
+**Unnamed/Floating Nets:**
+- Unnamed_Net_1 connecting: SW_EXT.1, CN1.+
+- Unnamed_Net_2 connecting: SW_EXT.2, U2.IN+
+- Unnamed_Net_3 connecting: R2.2, C1.2, R1.1
+- Unnamed_Net_4 connecting: R2.1, C1.1
+- Unnamed_Net_5 connecting: C3.2, C2.2
+- Unnamed_Net_6 connecting: C2.1, C3.1
+- Unnamed_Net_7 connecting: MOTOR_IZQ.2, U1.A2
+- Unnamed_Net_8 connecting: U2.OUT+, D1.A
+- Unnamed_Net_9 connecting: C7.1, C9.2
+- Unnamed_Net_10 connecting: MOTOR_IZQ.1, U1.A1
+- Unnamed_Net_11 connecting: U1.B2, MOTOR_DER.2
+- Unnamed_Net_12 connecting: U1.B1, MOTOR_DER.1
+
+**Unconnected Pins:**
+- C9.1
+- U_ESP32.P2
+- U_ESP32.P0
+- U_ESP32.RX
+- U_ESP32.TX
+- U_ESP32.P35
+- U_ESP32.P34
+- U_ESP32.EN
+- U_ESP32.3V3
+- U_ESP32.SD2
+- U_ESP32.SD3
+- U_ESP32.CMD
+- U_ESP32.SD1
+- U_ESP32.SD0
+- U_ESP32.CLK
+- C4.2
+- R5.2
+- CN1.3
+- CN1.4
+- C5.1
+- C5.2
+
+**Duplicate Components:**
+- None
