@@ -61,22 +61,6 @@ void PantallaTFT::despertarControlador() {
 
 void PantallaTFT::begin() {
     delay(100);
-    const uint8_t pines[6] = {5, 16, 17, 18, 19, 23};
-    const char* nombres[6] = {"CS(5)", "RST(16)", "PWMB(17)", "SCK(18)", "DC(19)", "MOSI(23)"};
-    Serial.println("\n=== [PRUEBA DE FUERZA OUTPUT HIGH/LOW EN PINES] ===");
-    for (int i = 0; i < 6; ++i) {
-        uint8_t p = pines[i];
-        pinMode(p, INPUT_PULLUP);   delay(2); int pu = digitalRead(p);
-        pinMode(p, INPUT_PULLDOWN); delay(2); int pd = digitalRead(p);
-        pinMode(p, OUTPUT | INPUT);
-        digitalWrite(p, LOW);       delay(2); int out_lo = digitalRead(p);
-        digitalWrite(p, HIGH);      delay(2); int out_hi = digitalRead(p);
-        pinMode(p, OUTPUT);
-        Serial.printf("  %-9s | PU=%d PD=%d | DriveLOW=%d (esp 0) | DriveHIGH=%d (esp 1)\n",
-                      nombres[i], pu, pd, out_lo, out_hi);
-    }
-    Serial.println("===================================================");
-
     SPI.begin(_pinSck, -1, _pinMosi, _pinCs);
     _tft.init(hw::kTftWidth, hw::kTftHeight, SPI_MODE0);
     _tft.setSPISpeed(8000000);

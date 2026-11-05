@@ -50,7 +50,7 @@ void supervisor_task_core0(void* pvParameters) {
 
     SupervisorState sup_state{};
     sup_state.command.target_mode = RobotMode::kIdle;
-    sup_state.command.base_speed = 600;
+    sup_state.command.base_speed = 480;
     sup_state.command.pid_kp = 0.45f;
     sup_state.command.pid_ki = 0.0f;
     sup_state.command.pid_kd = 3.5f;
