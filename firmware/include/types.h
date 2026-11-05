@@ -78,11 +78,11 @@ struct PidTuning {
 
 inline PidTuning default_pid_tuning() {
     PidTuning t{};
-    t.kp = 1.8f;
-    t.ki = 0.002f;
-    t.kd = 8.5f;
+    t.kp = 0.45f;
+    t.ki = 0.0f;
+    t.kd = 3.5f;
     t.lpf_alpha = 0.25f;
-    t.base_speed = 450;
+    t.base_speed = 600;
     t.max_speed = 950;
     t.max_integral = 300;
     return t;

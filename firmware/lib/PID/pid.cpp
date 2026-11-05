@@ -26,19 +26,20 @@ DriveCommand ControladorPID::calcular(int16_t position, LineStatus line_status, 
     if (dt_sec <= 0.0f || dt_sec > 0.05f) {
         dt_sec = 0.001f;
     }
+    float dt_ms = constrain(dt_sec * 1000.0f, 0.5f, 50.0f);
 
     if (line_status == LineStatus::kLostLeft) {
         if (out_pid) *out_pid = -_tuning.max_speed;
-        int16_t left = -(_tuning.base_speed / 2);
-        int16_t right = _tuning.base_speed;
-        return DriveCommand::diff(left, right);
+        int16_t outer = (_tuning.base_speed < 600) ? 600 : _tuning.base_speed;
+        int16_t inner = -350;
+        return DriveCommand::diff(inner, outer);
     }
 
     if (line_status == LineStatus::kLostRight) {
         if (out_pid) *out_pid = _tuning.max_speed;
-        int16_t left = _tuning.base_speed;
-        int16_t right = -(_tuning.base_speed / 2);
-        return DriveCommand::diff(left, right);
+        int16_t outer = (_tuning.base_speed < 600) ? 600 : _tuning.base_speed;
+        int16_t inner = -350;
+        return DriveCommand::diff(outer, inner);
     }
 
     float error = static_cast<float>(position);
@@ -47,7 +48,7 @@ DriveCommand ControladorPID::calcular(int16_t position, LineStatus line_status, 
     _integral += _tuning.ki * error * dt_sec;
     _integral = constrain(_integral, -static_cast<float>(_tuning.max_integral), static_cast<float>(_tuning.max_integral));
 
-    float derivative = (error - _last_error) / dt_sec;
+    float derivative = (error - _last_error) / dt_ms;
     _d_filtered = _tuning.lpf_alpha * derivative + (1.0f - _tuning.lpf_alpha) * _d_filtered;
     _last_error = error;
     float d_term = _tuning.kd * _d_filtered;
