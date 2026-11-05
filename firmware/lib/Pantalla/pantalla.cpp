@@ -279,7 +279,7 @@ void PantallaTFT::renderizarDiferencial(uint32_t now_ms, const SupervisorState& 
     curr.loop_time_us = tel.loop_time_us;
 
     for (uint8_t i = 0; i < 8; ++i) {
-        uint8_t ch = 4 + i;
+        uint8_t ch = 11 - i;
         curr.bar_heights[i] = static_cast<uint8_t>((tel.normalized[ch] * 65UL) / 1000UL);
     }
 
