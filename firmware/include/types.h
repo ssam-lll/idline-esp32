@@ -100,6 +100,20 @@ struct SupervisorCommand {
     float     pid_ki;
     float     pid_kd;
     int16_t   base_speed;
+    uint8_t   profile_idx;
+};
+
+struct RobotProfile {
+    const char* name;
+    int16_t     speed;
+    float       kp;
+    float       kd;
+};
+
+constexpr RobotProfile kProfiles[3] = {
+    {"CARRERA", 680, 0.58f, 4.0f},
+    {"SEGURO",  580, 0.62f, 3.6f},
+    {"ATAQUE",  750, 0.48f, 4.4f}
 };
 
 struct ControlTelemetry {
@@ -128,8 +142,10 @@ struct SupervisorState {
     SupervisorCommand command;
     uint32_t last_calib_button_ms;
     uint32_t last_start_button_ms;
+    bool wifi_enabled;
     bool wifi_connected;
     bool mqtt_connected;
+    uint8_t active_profile;
 };
 
 } // namespace idline

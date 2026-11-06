@@ -143,18 +143,23 @@ void PantallaTFT::renderizarHeader(const UiViewModel& curr) {
         _tft.printf("%.2fV", curr.vbat_mv / 1000.0f);
     }
 
-    if (curr.wifi_connected != _prev.wifi_connected || curr.mqtt_connected != _prev.mqtt_connected) {
+    if (curr.wifi_connected != _prev.wifi_connected || curr.mqtt_connected != _prev.mqtt_connected || curr.wifi_enabled != _prev.wifi_enabled) {
         _tft.fillRect(4, 22, 230, 10, COLOR_BG);
         _tft.setTextSize(1);
         _tft.setCursor(4, 23);
-        _tft.setTextColor(curr.wifi_connected ? ST77XX_GREEN : 0x8410);
-        _tft.print("WiFi ");
-        _tft.print(curr.wifi_connected ? "OK" : "--");
+        if (!curr.wifi_enabled) {
+            _tft.setTextColor(0x8410);
+            _tft.print("WiFi: OFF (MODO COMPETENCIA)");
+        } else {
+            _tft.setTextColor(curr.wifi_connected ? ST77XX_GREEN : 0x8410);
+            _tft.print("WiFi ");
+            _tft.print(curr.wifi_connected ? "OK" : "--");
 
-        _tft.setCursor(90, 23);
-        _tft.setTextColor(curr.mqtt_connected ? ST77XX_GREEN : 0x8410);
-        _tft.print("MQTT ");
-        _tft.print(curr.mqtt_connected ? "OK" : "--");
+            _tft.setCursor(90, 23);
+            _tft.setTextColor(curr.mqtt_connected ? ST77XX_GREEN : 0x8410);
+            _tft.print("MQTT ");
+            _tft.print(curr.mqtt_connected ? "OK" : "--");
+        }
     }
 }
 
@@ -213,7 +218,7 @@ void PantallaTFT::renderizarReticula(const UiViewModel& curr) {
 }
 
 void PantallaTFT::renderizarFooter(const UiViewModel& curr) {
-    if (curr.m1 != _prev.m1 || curr.m2 != _prev.m2 || (curr.loop_time_us / 100) != (_prev.loop_time_us / 100)) {
+    if (curr.m1 != _prev.m1 || curr.m2 != _prev.m2 || curr.profile_idx != _prev.profile_idx || (curr.loop_time_us / 100) != (_prev.loop_time_us / 100)) {
         _tft.fillRect(4, 186, 232, 50, COLOR_BG);
         _tft.setTextSize(1);
         _tft.setTextColor(COLOR_TEXT);
@@ -224,15 +229,11 @@ void PantallaTFT::renderizarFooter(const UiViewModel& curr) {
         _tft.setCursor(140, 190);
         _tft.printf("Loop:%4uus", curr.loop_time_us);
 
-        if (curr.vbat_mv >= hw::kBattUsbFloor_mV && curr.vbat_mv < hw::kBattCutoff_mV) {
-            _tft.setTextColor(COLOR_ALERT);
-            _tft.setCursor(4, 210);
-            _tft.print("ALERTA: BATERIA BAJA (<6.4V)");
-        } else {
-            _tft.setTextColor(0x8410);
-            _tft.setCursor(4, 210);
-            _tft.print("IDLine ESP32 1kHz Dual-Core");
-        }
+        _tft.setCursor(4, 210);
+        _tft.setTextSize(1);
+        _tft.setTextColor(ST77XX_YELLOW);
+        uint8_t pidx = curr.profile_idx % 3;
+        _tft.printf("PERFIL: %s (%d)", kProfiles[pidx].name, kProfiles[pidx].speed);
     }
 }
 
@@ -255,8 +256,10 @@ void PantallaTFT::renderizarDiferencial(uint32_t now_ms, const SupervisorState& 
     UiViewModel curr{};
     curr.mode = tel.current_mode;
     curr.vbat_mv = tel.vbat_mv;
+    curr.wifi_enabled = state.wifi_enabled;
     curr.wifi_connected = state.wifi_connected;
     curr.mqtt_connected = state.mqtt_connected;
+    curr.profile_idx = state.active_profile;
     curr.position = (tel.position / 25) * 25;
     curr.m1 = tel.m1_pwm;
     curr.m2 = tel.m2_pwm;

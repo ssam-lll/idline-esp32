@@ -30,15 +30,15 @@ DriveCommand ControladorPID::calcular(int16_t position, LineStatus line_status, 
 
     if (line_status == LineStatus::kLostLeft) {
         if (out_pid) *out_pid = -_tuning.max_speed;
-        int16_t outer = (_tuning.base_speed < 600) ? 600 : _tuning.base_speed;
-        int16_t inner = -350;
+        int16_t outer = (_tuning.base_speed < 620) ? 620 : _tuning.base_speed;
+        int16_t inner = -360;
         return DriveCommand::diff(inner, outer);
     }
 
     if (line_status == LineStatus::kLostRight) {
         if (out_pid) *out_pid = _tuning.max_speed;
-        int16_t outer = (_tuning.base_speed < 600) ? 600 : _tuning.base_speed;
-        int16_t inner = -350;
+        int16_t outer = (_tuning.base_speed < 620) ? 620 : _tuning.base_speed;
+        int16_t inner = -360;
         return DriveCommand::diff(outer, inner);
     }
 
@@ -58,9 +58,14 @@ DriveCommand ControladorPID::calcular(int16_t position, LineStatus line_status, 
         *out_pid = static_cast<int16_t>(pid_total);
     }
 
-    int16_t left_pwm = constrain(static_cast<int16_t>(_tuning.base_speed + pid_total),
+    // Reducción adaptativa: rápido en rectas, dosificado en curvas
+    int16_t abs_error = (position < 0) ? -position : position;
+    int16_t reduccion_curva = (abs_error * 180) / 1000;
+    int16_t current_speed = _tuning.base_speed - reduccion_curva;
+
+    int16_t left_pwm = constrain(static_cast<int16_t>(current_speed + pid_total),
                                  -_tuning.max_speed, _tuning.max_speed);
-    int16_t right_pwm = constrain(static_cast<int16_t>(_tuning.base_speed - pid_total),
+    int16_t right_pwm = constrain(static_cast<int16_t>(current_speed - pid_total),
                                   -_tuning.max_speed, _tuning.max_speed);
 
     return DriveCommand::diff(left_pwm, right_pwm);

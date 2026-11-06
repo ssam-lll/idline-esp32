@@ -31,7 +31,7 @@ private:
     uint32_t  _last_tick_us;
 
     static const uint8_t kNumSensores8 = 8;
-    const uint8_t _canales8[kNumSensores8] = {11, 10, 9, 8, 7, 6, 5, 4};
+    const uint8_t _canales8[kNumSensores8] = {4, 5, 6, 7, 8, 9, 10, 11};
 
     uint16_t calcularCrc(const uint8_t* data, size_t len) const;
 

@@ -1,6 +1,7 @@
 #include "telemetria.h"
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
+#include <Preferences.h>
 
 namespace idline {
 
@@ -16,7 +17,7 @@ static void mqttStaticCallback(char* topic, byte* payload, unsigned int length) 
 Telemetria::Telemetria(const char* ssid, const char* pass, const char* broker, int port, const char* clientId)
     : _ssid(ssid), _pass(pass), _broker(broker), _port(port), _clientId(clientId),
       _mqtt(_espClient), _lastReconnectMillis(0), _motorCallback(nullptr),
-      _active_state(nullptr), _last_telemetry_ms(0), _last_ack_seq(0),
+      _active_state(nullptr), _last_telemetry_ms(0), _last_ack_seq(0), _wifi_enabled(false),
       _btn_calib_last_raw(HIGH), _btn_calib_press_start_ms(0), _btn_calib_last_debounce_ms(0),
       _btn_start_last_raw(HIGH), _btn_start_press_start_ms(0), _btn_start_last_debounce_ms(0) {
     s_instancia = this;
@@ -26,19 +27,26 @@ void Telemetria::setMotorCallback(ComandoMotorCallback callback) {
     _motorCallback = callback;
 }
 
-void Telemetria::begin() {
+void Telemetria::begin(bool enable_wifi) {
+    _wifi_enabled = enable_wifi;
     pinMode(hw::kPinBtnCalib, INPUT_PULLUP);
     pinMode(hw::kPinBtnStart, INPUT_PULLUP);
 
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(_ssid, _pass);
-
-    _mqtt.setServer(_broker, _port);
-    _mqtt.setCallback(mqttStaticCallback);
-    _mqtt.setBufferSize(512);
+    if (_wifi_enabled) {
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(_ssid, _pass);
+        _mqtt.setServer(_broker, _port);
+        _mqtt.setCallback(mqttStaticCallback);
+        _mqtt.setBufferSize(512);
+    } else {
+        WiFi.mode(WIFI_OFF);
+    }
 }
 
 void Telemetria::mantenerConexion(unsigned long currentMillis) {
+    if (!_wifi_enabled) {
+        return;
+    }
     if (WiFi.status() == WL_CONNECTED) {
         if (!s_ota_iniciado) {
             ArduinoOTA.setHostname("idline-esp32");
@@ -174,7 +182,23 @@ void Telemetria::procesarBotones(uint32_t now_ms, SupervisorState* state) {
             _btn_start_press_start_ms = now_ms;
         } else {
             uint32_t press_duration = now_ms - _btn_start_press_start_ms;
-            if (press_duration >= 40) {
+            if (press_duration >= 700) {
+                if (state->command.target_mode == RobotMode::kIdle ||
+                    state->command.target_mode == RobotMode::kReady) {
+                    state->active_profile = (state->active_profile + 1) % 3;
+                    const auto& p = kProfiles[state->active_profile];
+                    state->command.base_speed = p.speed;
+                    state->command.pid_kp = p.kp;
+                    state->command.pid_kd = p.kd;
+                    state->command.pid_ki = 0.0f;
+                    state->command.profile_idx = state->active_profile;
+                    Preferences prefs;
+                    if (prefs.begin("idline", false)) {
+                        prefs.putUChar("prof", state->active_profile);
+                        prefs.end();
+                    }
+                }
+            } else if (press_duration >= 40) {
                 if (state->command.target_mode == RobotMode::kRunning) {
                     state->command.target_mode = RobotMode::kIdle;
                 } else {
@@ -192,8 +216,13 @@ void Telemetria::tick(uint32_t now_ms, const ControlTelemetry& tel, SupervisorSt
     procesarBotones(now_ms, state);
     mantenerConexion(now_ms);
 
-    state->wifi_connected = (WiFi.status() == WL_CONNECTED);
-    state->mqtt_connected = _mqtt.connected();
+    state->wifi_enabled = _wifi_enabled;
+    state->wifi_connected = _wifi_enabled && (WiFi.status() == WL_CONNECTED);
+    state->mqtt_connected = _wifi_enabled && _mqtt.connected();
+
+    if (!_wifi_enabled) {
+        return;
+    }
 
     if (tel.ack_remote_cmd_seq != _last_ack_seq && tel.ack_remote_cmd_seq != 0) {
         _last_ack_seq = tel.ack_remote_cmd_seq;
