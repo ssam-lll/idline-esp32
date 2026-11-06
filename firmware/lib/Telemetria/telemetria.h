@@ -31,7 +31,6 @@ private:
     SupervisorState* _active_state;
     uint32_t         _last_telemetry_ms;
     uint32_t         _last_ack_seq;
-    bool             _wifi_enabled;
 
     uint8_t  _btn_calib_last_raw;
     uint32_t _btn_calib_press_start_ms;
@@ -51,7 +50,7 @@ public:
                const char* clientId = hw::kMqttClientId);
 
     void setMotorCallback(ComandoMotorCallback callback);
-    void begin(bool enable_wifi = false);
+    void begin();
     void mantenerConexion(unsigned long currentMillis);
     void procesarMensaje(char* topic, byte* payload, unsigned int length);
     void publicarSensores(const int valores[8], int error);
