@@ -38,8 +38,6 @@ void Telemetria::begin(bool enable_wifi) {
         _mqtt.setServer(_broker, _port);
         _mqtt.setCallback(mqttStaticCallback);
         _mqtt.setBufferSize(512);
-    } else {
-        WiFi.mode(WIFI_OFF);
     }
 }
 

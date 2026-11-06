@@ -83,13 +83,13 @@ void control_task_core1(void* pvParameters) {
     }
 }
 
-void supervisor_task_core0(void* pvParameters) {
-    PantallaTFT pantalla;
-    Telemetria  telemetria;
+static PantallaTFT g_pantalla;
+static Telemetria  g_telemetria;
 
-    telemetria.begin(g_wifi_enabled);
-    vTaskDelay(pdMS_TO_TICKS(200));
-    pantalla.begin();
+void supervisor_task_core0(void* pvParameters) {
+    g_pantalla.begin();
+    vTaskDelay(pdMS_TO_TICKS(100));
+    g_telemetria.begin(g_wifi_enabled);
 
     SupervisorState sup_state{};
     sup_state.command.target_mode = RobotMode::kIdle;
@@ -141,16 +141,16 @@ void supervisor_task_core0(void* pvParameters) {
         }
 
         const ControlTelemetry tel = g_telemetry_bus.read();
-        telemetria.tick(now_ms, tel, &sup_state);
-        pantalla.renderizarDiferencial(now_ms, sup_state, tel);
+        g_telemetria.tick(now_ms, tel, &sup_state);
+        g_pantalla.renderizarDiferencial(now_ms, sup_state, tel);
 
         g_supervisor_bus.publish(sup_state.command);
     }
 }
 
 void setup() {
-    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Desactivar detector de brownout por caida transitoria de motores
     Serial.begin(115200);
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Desactivar detector de brownout por caida transitoria de motores
 
     pinMode(hw::kPinBtnStart, INPUT_PULLUP);
     delay(50);
