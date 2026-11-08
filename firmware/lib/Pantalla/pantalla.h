@@ -13,8 +13,10 @@ namespace idline {
 struct UiViewModel {
     RobotMode mode;
     uint16_t  vbat_mv;
+    bool      wifi_enabled;
     bool      wifi_connected;
     bool      mqtt_connected;
+    uint8_t   profile_idx;
     int16_t   position;
     uint8_t   bar_heights[8];
     int16_t   m1;
