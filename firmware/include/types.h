@@ -110,10 +110,13 @@ struct RobotProfile {
     float       kd;
 };
 
-constexpr RobotProfile kProfiles[3] = {
-    {"CARRERA", 680, 0.58f, 4.0f},
-    {"SEGURO",  580, 0.62f, 3.6f},
-    {"ATAQUE",  750, 0.48f, 4.4f}
+constexpr size_t kNumProfiles = 4;
+
+constexpr RobotProfile kProfiles[kNumProfiles] = {
+    {"CARRERA",  680, 0.58f, 4.0f},
+    {"SEGURO",   580, 0.62f, 3.6f},
+    {"ATAQUE",   750, 0.48f, 4.4f},
+    {"ARQUITEC", 500, 0.55f, 3.5f}
 };
 
 struct ControlTelemetry {

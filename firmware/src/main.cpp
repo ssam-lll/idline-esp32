@@ -111,7 +111,7 @@ void supervisor_task_core0(void* pvParameters) {
             String line = Serial.readStringUntil('\n');
             line.trim();
             if (line == "dump" || line == "runs") {
-                uint8_t pidx = g_recorded_profile % 3;
+                uint8_t pidx = g_recorded_profile % kNumProfiles;
                 Serial.printf("#run,1,profile,%s,speed,%d,kp,%.2f,kd,%.2f,samples,%u\n",
                               kProfiles[pidx].name,
                               kProfiles[pidx].speed,
@@ -158,7 +158,7 @@ void setup() {
 
     Preferences prefs;
     if (prefs.begin("idline", true)) {
-        g_boot_profile = prefs.getUChar("prof", 0) % 3;
+        g_boot_profile = prefs.getUChar("prof", 0) % kNumProfiles;
         prefs.end();
     } else {
         g_boot_profile = 0;

@@ -232,7 +232,7 @@ void PantallaTFT::renderizarFooter(const UiViewModel& curr) {
         _tft.setCursor(4, 210);
         _tft.setTextSize(1);
         _tft.setTextColor(ST77XX_YELLOW);
-        uint8_t pidx = curr.profile_idx % 3;
+        uint8_t pidx = curr.profile_idx % kNumProfiles;
         _tft.printf("PERFIL: %s (%d)", kProfiles[pidx].name, kProfiles[pidx].speed);
     }
 }

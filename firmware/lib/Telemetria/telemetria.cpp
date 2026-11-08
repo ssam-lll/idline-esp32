@@ -183,7 +183,7 @@ void Telemetria::procesarBotones(uint32_t now_ms, SupervisorState* state) {
             if (press_duration >= 700) {
                 if (state->command.target_mode == RobotMode::kIdle ||
                     state->command.target_mode == RobotMode::kReady) {
-                    state->active_profile = (state->active_profile + 1) % 3;
+                    state->active_profile = (state->active_profile + 1) % kNumProfiles;
                     const auto& p = kProfiles[state->active_profile];
                     state->command.base_speed = p.speed;
                     state->command.pid_kp = p.kp;
