@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IDLine Telemetría & Control - Samuel López</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --accent: #58a6ff;
+            --green: #238636;
+            --green-hover: #2ea043;
+            --red: #da3633;
+            --red-hover: #f85149;
+            --yellow: #d29922;
+            --purple: #8957e5;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 12px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+        .title { font-size: 1.1rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+        .badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; background: #21262d; border: 1px solid var(--border); }
+        .badge.online { background: rgba(35, 134, 54, 0.2); color: #3fb950; border-color: #238636; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media(min-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+        .card-title { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: #8b949e; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .btn { border: none; border-radius: 6px; padding: 14px 10px; font-weight: 700; font-size: 0.95rem; cursor: pointer; color: #fff; transition: opacity 0.2s; text-align: center; }
+        .btn:active { transform: scale(0.98); }
+        .btn-start { background: var(--green); grid-column: span 2; font-size: 1.1rem; padding: 16px; }
+        .btn-stop { background: var(--red); }
+        .btn-calib { background: var(--yellow); color: #000; }
+        .profile-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+        .btn-prof { background: #21262d; border: 1px solid var(--border); color: #8b949e; font-size: 0.75rem; padding: 8px 4px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-prof.active { background: var(--purple); color: #fff; border-color: #a371f7; }
+        .bars { display: flex; justify-content: space-between; align-items: flex-end; height: 110px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .bar-fill-wrap { width: 14px; height: 80px; background: #21262d; border-radius: 3px; display: flex; align-items: flex-end; overflow: hidden; }
+        .bar-fill { width: 100%; background: #388bfd; transition: height 0.1s; height: 0%; }
+        .bar-label { font-size: 0.65rem; color: #8b949e; }
+        .metric-row { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.85rem; }
+        .metric-val { font-weight: 700; color: #fff; }
+        .reticle { height: 26px; background: #21262d; border-radius: 4px; position: relative; margin-top: 8px; display: flex; align-items: center; justify-content: center; }
+        .reticle-center { width: 2px; height: 100%; background: #8b949e; }
+        .reticle-pointer { position: absolute; width: 12px; height: 12px; background: var(--yellow); border-radius: 50%; transform: translateX(-50%); transition: left 0.05s; left: 50%; }
+        .log-box { font-family: monospace; font-size: 0.75rem; color: #8b949e; max-height: 80px; overflow-y: auto; background: #0d1117; padding: 6px; border-radius: 4px; border: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title">
+        <span>🤖 IDLine ESP32</span>
+        <span class="badge" id="broker-status">MQTT Desconectado</span>
+    </div>
+    <div id="vbat-display" class="badge" style="font-weight: 700; color: #58a6ff;">--.- V</div>
+</div>
+
+<div class="grid">
+    <!-- PANEL DE CONTROL -->
+    <div class="card">
+        <div class="card-title">
+            <span>Control de Carrera</span>
+            <span id="current-mode" style="color: var(--yellow);">IDLE</span>
+        </div>
+        
+        <div class="btn-grid">
+            <button class="btn btn-start" onclick="enviarComando('start_pid')">▶ ARRANCAR (START)</button>
+            <button class="btn btn-stop" onclick="enviarComando('stop')">⏹ PARAR</button>
+            <button class="btn btn-calib" onclick="enviarComando('calibrate')">⚙ CALIBRAR</button>
+        </div>
+
+        <div style="font-size: 0.75rem; color: #8b949e; margin-top: 8px; font-weight: 600;">SELECCIÓN DE PERFIL:</div>
+        <div class="profile-selector">
+            <button class="btn-prof" id="prof-0" onclick="seleccionarPerfil(0, 'CARRERA', 680, 0.58, 4.0)">CARRERA<br>680</button>
+            <button class="btn-prof active" id="prof-1" onclick="seleccionarPerfil(1, 'SEGURO', 580, 0.62, 3.6)">SEGURO<br>580</button>
+            <button class="btn-prof" id="prof-2" onclick="seleccionarPerfil(2, 'ATAQUE', 750, 0.48, 4.4)">ATAQUE<br>750</button>
+            <button class="btn-prof" id="prof-3" onclick="seleccionarPerfil(3, 'ARQUITEC', 500, 0.55, 3.5)" style="border-color: #58a6ff; color: #58a6ff;">ARQUITEC<br>500</button>
+        </div>
+    </div>
+
+    <!-- PANEL DE SENSORES Y POSICION -->
+    <div class="card">
+        <div class="card-title">
+            <span>Barra de 8 Sensores (C4 - C11)</span>
+            <span id="pos-display" style="color: #fff;">Pos: 0</span>
+        </div>
+
+        <div class="bars" id="bars-container">
+            <!-- 8 Barras generadas dinamicamente -->
+        </div>
+
+        <div class="reticle">
+            <div class="reticle-center"></div>
+            <div class="reticle-pointer" id="pointer"></div>
+        </div>
+
+        <div class="metric-row">
+            <span>Motor Izq (M1): <b id="m1-display" class="metric-val">0</b></span>
+            <span>Motor Der (M2): <b id="m2-display" class="metric-val">0</b></span>
+        </div>
+    </div>
+
+    <!-- RECONSTRUCCION DE PISTA -->
+    <div class="card" style="grid-column: span 1 / -1;">
+        <div class="card-title">
+            <span>Pista Oficial Reconstruida (20s) & Telemetría IoT</span>
+            <span style="font-size: 0.75rem; color: #8b949e;">Clase de Arquitectura de Computadores</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <img src="../reconstruccion_pista_real.png" style="max-width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--border);" alt="Pista Reconstruida">
+        </div>
+        <div class="log-box" id="mqtt-log" style="margin-top: 10px;">
+            [Sistema] Panel listo. Conectando a Broker WebSocket...
+        </div>
+    </div>
+</div>
+
+<script>
+    const BROKER_HOST = window.location.hostname || "192.168.1.40";
+    const WS_PORT = 8083; // Puerto WebSockets habitual de EMQX (o 9001 en Mosquitto)
+    const TOPIC_TEL = "telemetria/sensores";
+    const TOPIC_CTRL = "control/motores";
+
+    let activeProfile = 1;
+
+    // Crear las 8 barras en el DOM
+    const barsContainer = document.getElementById("bars-container");
+    for (let i = 0; i < 8; ++i) {
+        barsContainer.innerHTML += `
+            <div class="bar-col">
+                <div class="bar-fill-wrap">
+                    <div class="bar-fill" id="bar-${i}"></div>
+                </div>
+                <span class="bar-label">C${i+4}</span>
+            </div>
+        `;
+    }
+
+    function log(msg) {
+        const box = document.getElementById("mqtt-log");
+        box.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + box.innerHTML;
+    }
+
+    // Conexion MQTT
+    const client = mqtt.connect(`ws://${BROKER_HOST}:${WS_PORT}/mqtt`, {
+        clientId: 'WebUI_' + Math.random().toString(16).substr(2, 8),
+        keepalive: 30
+    });
+
+    client.on('connect', () => {
+        const badge = document.getElementById("broker-status");
+        badge.textContent = "MQTT Conectado";
+        badge.className = "badge online";
+        log("Conectado exitosamente al Broker MQTT.");
+        client.subscribe(TOPIC_TEL);
+    });
+
+    client.on('error', (err) => {
+        log("Error MQTT: " + err.message);
+    });
+
+    client.on('message', (topic, payload) => {
+        try {
+            const data = JSON.parse(payload.toString());
+            if (topic === TOPIC_TEL) {
+                actualizarTelemetria(data);
+            }
+        } catch (e) {
+            console.error("JSON parse err:", e);
+        }
+    });
+
+    function actualizarTelemetria(data) {
+        if (data.vbat_mv) {
+            document.getElementById("vbat-display").textContent = (data.vbat_mv / 1000).toFixed(2) + " V";
+        }
+        if (data.modo) {
+            const m = document.getElementById("current-mode");
+            m.textContent = data.modo;
+            m.style.color = (data.modo === "RUN" || data.modo === "RUNNING") ? "var(--green)" : "var(--yellow)";
+        }
+        if (data.m1 !== undefined) document.getElementById("m1-display").textContent = data.m1;
+        if (data.m2 !== undefined) document.getElementById("m2-display").textContent = data.m2;
+
+        if (data.posicion !== undefined) {
+            document.getElementById("pos-display").textContent = "Pos: " + (data.posicion > 0 ? "+" : "") + data.posicion;
+            const pct = 50 + (data.posicion / 1000) * 45;
+            document.getElementById("pointer").style.left = Math.max(5, Math.min(95, pct)) + "%";
+        }
+
+        if (data.sensores && data.sensores.length === 8) {
+            for (let i = 0; i < 8; ++i) {
+                const raw = data.sensores[i];
+                const pct = Math.max(0, Math.min(100, ((raw - 200) / 3800) * 100));
+                document.getElementById(`bar-${i}`).style.height = pct + "%";
+            }
+        }
+    }
+
+    function enviarComando(cmd) {
+        const payload = JSON.stringify({ cmd: cmd });
+        client.publish(TOPIC_CTRL, payload);
+        log("Orden enviada: " + cmd);
+    }
+
+    function seleccionarPerfil(idx, nombre, speed, kp, kd) {
+        activeProfile = idx;
+        for (let i = 0; i < 4; ++i) {
+            document.getElementById(`prof-${i}`).classList.remove("active");
+        }
+        document.getElementById(`prof-${idx}`).classList.add("active");
+
+        const payload = JSON.stringify({
+            cmd: "set_pid",
+            kp: kp,
+            ki: 0.0,
+            kd: kd,
+            speed: speed
+        });
+        client.publish(TOPIC_CTRL, payload);
+        log(`Perfil seleccionado: ${nombre} (${speed}) -> Kp:${kp} Kd:${kd}`);
+    }
+</script>
+
+</body>
+</html>
