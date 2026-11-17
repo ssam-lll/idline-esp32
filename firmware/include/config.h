@@ -45,15 +45,16 @@ constexpr uint32_t kBattR1_Ohms       = 100000;
 constexpr uint32_t kBattR2_Ohms       = 33000;
 constexpr uint16_t kBattCutoff_mV     = 6400; // 3.20V per cell
 constexpr uint16_t kBattRecover_mV    = 6600; // 3.30V per cell
+constexpr uint16_t kBattFull_mV       = 8400; // 4.20V per cell
 constexpr uint16_t kBattUsbFloor_mV   = 6300; // Below this, powered via USB / 5V rail without 2S cutoff
 
-constexpr const char* kWifiSsid            = "ANDRES-LOPEZ";
-constexpr const char* kWifiPass            = "Gallego162783";
-constexpr const char* kMqttBroker          = "192.168.1.40";
-constexpr uint16_t    kMqttPort            = 1883;
-constexpr const char* kMqttClientId        = "ESP32_IDLine";
-constexpr uint32_t    kTelemetryIntervalMs = 500;
-constexpr uint32_t    kMqttReconnectMs     = 3000;
+constexpr const char* kWifiSsid            = "Samuel";
+constexpr const char* kWifiPass            = "12345678";
+constexpr const char* kApiUrl              = "https://ssamu.pythonanywhere.com/api/datos/";
+constexpr const char* kDeviceId            = "idline_esp32";
+constexpr uint32_t    kHttpIntervalMs      = 300;
+constexpr uint32_t    kHttpTimeoutMs       = 3500;
+constexpr uint32_t    kHttpConnectTimeoutMs = 4000;
 
 constexpr uint32_t kMuxAllMask = (1UL << kPinMuxS0) | (1UL << kPinMuxS1) | 
                                  (1UL << kPinMuxS2) | (1UL << kPinMuxS3);

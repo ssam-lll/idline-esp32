@@ -3,35 +3,63 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <PubSubClient.h>
-#include <functional>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 #include "config.h"
 #include "types.h"
 
 namespace idline {
 
-typedef std::function<void(const char* cmd, int m1, int m2)> ComandoMotorCallback;
-
 class Telemetria {
 private:
+    struct RemoteCmdMailbox {
+        bool    has_cmd;
+        char    cmd[24];
+        int16_t m1;
+        int16_t m2;
+        float   kp;
+        float   ki;
+        float   kd;
+        int16_t speed;
+        bool    is_new_track;
+        bool    is_upload_memory;
+    };
+
+    static constexpr size_t kLiveQueueCap = 64;
+    static constexpr size_t kCmdQueueCap  = 8;
+
     const char* _ssid;
     const char* _pass;
-    const char* _broker;
-    int         _port;
-    const char* _clientId;
+    const char* _apiUrl;
+    const char* _deviceId;
 
-    WiFiClient   _espClient;
-    PubSubClient _mqtt;
-
-    unsigned long _lastReconnectMillis;
-    const unsigned long _reconnectInterval = hw::kMqttReconnectMs;
-
-    ComandoMotorCallback _motorCallback;
-
-    SupervisorState* _active_state;
-    uint32_t         _last_telemetry_ms;
-    uint32_t         _last_ack_seq;
     bool             _wifi_enabled;
+    volatile bool    _http_connected;
+    volatile bool    _ota_active;
+    bool             _wifi_ip_logged;
+    uint32_t         _track_id;
+
+    ControlTelemetry _latest_tel;
+    RemoteCmdMailbox _cmd_queue[kCmdQueueCap];
+    size_t           _cmd_head;
+    size_t           _cmd_tail;
+    portMUX_TYPE     _mux;
+
+    WiFiClientSecure _tls_client;
+    HTTPClient       _http;
+    bool             _http_initialized;
+
+    RunSample        _live_queue[kLiveQueueCap];
+    volatile size_t  _live_head;
+    volatile size_t  _live_tail;
+
+    const RunSample* _run_buffer;
+    const size_t*    _sample_count_ptr;
+    volatile bool    _uploading_memory;
+    size_t           _upload_offset;
+
+    TaskHandle_t     _http_task_handle;
 
     uint8_t  _btn_calib_last_raw;
     uint32_t _btn_calib_press_start_ms;
@@ -42,21 +70,26 @@ private:
     uint32_t _btn_start_last_debounce_ms;
 
     void procesarBotones(uint32_t now_ms, SupervisorState* state);
+    void executeHttpPost();
+    void parseServerResponse(const String& response);
+    void enqueueCommandObject(JsonVariant cmdVar);
+    void pushRemoteCmd(const RemoteCmdMailbox& mb);
+    bool popRemoteCmd(RemoteCmdMailbox& mb);
+    bool popSample(RunSample& sample);
+
+    static void httpTaskTrampoline(void* arg);
+    void httpTaskLoop();
 
 public:
     Telemetria(const char* ssid = hw::kWifiSsid,
                const char* pass = hw::kWifiPass,
-               const char* broker = hw::kMqttBroker,
-               int port = hw::kMqttPort,
-               const char* clientId = hw::kMqttClientId);
+               const char* apiUrl = hw::kApiUrl,
+               const char* deviceId = hw::kDeviceId);
 
-    void setMotorCallback(ComandoMotorCallback callback);
-    void begin(bool enable_wifi = false);
-    void mantenerConexion(unsigned long currentMillis);
-    void procesarMensaje(char* topic, byte* payload, unsigned int length);
-    void publicarSensores(const int valores[8], int error);
-    void publicarEstadoMotores(int m1, int m2, const char* status);
+    void setRunBuffer(const RunSample* buffer, const size_t* count_ptr);
+    void pushSample(const RunSample& sample);
 
+    void begin(bool enable_wifi = true);
     void tick(uint32_t now_ms, const ControlTelemetry& tel, SupervisorState* state);
 };
 

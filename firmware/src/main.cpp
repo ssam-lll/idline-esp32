@@ -17,22 +17,17 @@ using namespace idline;
 static Seqlock<SupervisorCommand> g_supervisor_bus;
 static Seqlock<ControlTelemetry>  g_telemetry_bus;
 
-struct RunSample {
-    uint16_t t_ms;
-    int16_t  pos;
-    int16_t  m1;
-    int16_t  m2;
-    uint8_t  status;
-};
-
 constexpr size_t kMaxSamples = 4000;
 static RunSample g_run_buffer[kMaxSamples];
 static size_t g_sample_count = 0;
 static bool g_recording = false;
 static uint8_t g_recorded_profile = 0;
 
-static bool g_wifi_enabled = false;
+static bool g_wifi_enabled = true;
 static uint8_t g_boot_profile = 0;
+
+static PantallaTFT g_pantalla;
+static Telemetria  g_telemetria;
 
 void control_task_core1(void* pvParameters) {
     Multiplexor    mux;
@@ -62,15 +57,17 @@ void control_task_core1(void* pvParameters) {
                     g_sample_count = 0;
                     g_recorded_profile = cmd.profile_idx;
                 }
+                RunSample s{
+                    static_cast<uint16_t>(g_sample_count * 20),
+                    tel.position,
+                    tel.m1_pwm,
+                    tel.m2_pwm,
+                    static_cast<uint8_t>(tel.line_status)
+                };
                 if (g_sample_count < kMaxSamples) {
-                    g_run_buffer[g_sample_count++] = {
-                        static_cast<uint16_t>(g_sample_count * 20),
-                        tel.position,
-                        tel.m1_pwm,
-                        tel.m2_pwm,
-                        static_cast<uint8_t>(tel.line_status)
-                    };
+                    g_run_buffer[g_sample_count++] = s;
                 }
+                g_telemetria.pushSample(s);
             }
         } else {
             if (g_recording) {
@@ -83,12 +80,10 @@ void control_task_core1(void* pvParameters) {
     }
 }
 
-static PantallaTFT g_pantalla;
-static Telemetria  g_telemetria;
-
 void supervisor_task_core0(void* pvParameters) {
     g_pantalla.begin();
     vTaskDelay(pdMS_TO_TICKS(100));
+    g_telemetria.setRunBuffer(g_run_buffer, &g_sample_count);
     g_telemetria.begin(g_wifi_enabled);
 
     SupervisorState sup_state{};
@@ -100,11 +95,13 @@ void supervisor_task_core0(void* pvParameters) {
     sup_state.command.pid_kd = kProfiles[g_boot_profile].kd;
     sup_state.command.pid_ki = 0.0f;
     sup_state.wifi_enabled = g_wifi_enabled;
+    sup_state.track_id = 1;
+    sup_state.upload_memory_seq = 0;
 
     TickType_t last_wake = xTaskGetTickCount();
 
     for (;;) {
-        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(33));
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(20));
         const uint32_t now_ms = millis();
 
         if (Serial.available()) {
@@ -129,14 +126,16 @@ void supervisor_task_core0(void* pvParameters) {
                 }
                 Serial.println("#end");
             } else if (line == "status") {
-                Serial.printf("MODO:%d VBAT:%u SPEED:%d KP:%.2f KD:%.2f WIFI:%d SAMPLES:%u\n",
+                Serial.printf("MODO:%d VBAT:%u SPEED:%d KP:%.2f KD:%.2f WIFI:%d HTTP:%d SAMPLES:%u TRACK:%u\n",
                               (int)sup_state.command.target_mode,
                               (unsigned)g_telemetry_bus.read().vbat_mv,
                               sup_state.command.base_speed,
                               sup_state.command.pid_kp,
                               sup_state.command.pid_kd,
-                              g_wifi_enabled ? 1 : 0,
-                              (unsigned)g_sample_count);
+                              sup_state.wifi_connected ? 1 : 0,
+                              sup_state.http_connected ? 1 : 0,
+                              (unsigned)g_sample_count,
+                              sup_state.track_id);
             }
         }
 
@@ -150,11 +149,10 @@ void supervisor_task_core0(void* pvParameters) {
 
 void setup() {
     Serial.begin(115200);
-    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Desactivar detector de brownout por caida transitoria de motores
+    Serial.setTimeout(5);
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
 
-    pinMode(hw::kPinBtnStart, INPUT_PULLUP);
-    delay(50);
-    g_wifi_enabled = (digitalRead(hw::kPinBtnStart) == LOW);
+    g_wifi_enabled = true;
 
     Preferences prefs;
     if (prefs.begin("idline", true)) {
@@ -163,6 +161,10 @@ void setup() {
     } else {
         g_boot_profile = 0;
     }
+
+    Serial.printf("[BOOT] IDLine ESP32 | WiFi=%s | Perfil=%s\n",
+                  g_wifi_enabled ? "ON" : "OFF",
+                  kProfiles[g_boot_profile].name);
 
     xTaskCreatePinnedToCore(control_task_core1, "ControlCore1", 8192, nullptr, 5, nullptr, 1);
     xTaskCreatePinnedToCore(supervisor_task_core0, "SupervCore0", 8192, nullptr, 2, nullptr, 0);

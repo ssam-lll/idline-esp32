@@ -19,24 +19,26 @@
 4. [Distribución de Potencia Triplemente Aislada](#-distribución-de-potencia-triplemente-aislada)
 5. [Sistema de Visión Modular (8 a 16 Sensores)](#-sistema-de-visión-modular-8-a-16-sensores)
 6. [Mapeo de Pines del Microcontrolador (Pinout)](#-mapeo-de-pines-del-microcontrolador-pinout)
-7. [Arquitectura Mecánica y Modular (Estructura de Pisos)](#-arquitectura-mecánica-y-modular-estructura-de-pisos)
-8. [Catálogo de Componentes Principales](#-catálogo-de-componentes-principales)
-9. [Estructura del Proyecto y Documentación](#-estructura-del-proyecto-y-documentación)
-10. [Autor y Créditos](#-autor-y-créditos)
+7. [Telemetría Wi-Fi, Dashboard Web y Controles Físicos](#-telemetría-wi-fi-dashboard-web-y-controles-físicos)
+8. [Arquitectura Mecánica y Modular (Estructura de Pisos)](#-arquitectura-mecánica-y-modular-estructura-de-pisos)
+9. [Catálogo de Componentes Principales](#-catálogo-de-componentes-principales)
+10. [Estructura del Proyecto y Documentación](#-estructura-del-proyecto-y-documentación)
+11. [Autor y Créditos](#-autor-y-créditos)
 
 ---
 
 ## 🚀 Características Principales
 
-* **Controlador de Doble Núcleo (Dual-Core 240 MHz):** Migración desde microcontroladores básicos a la arquitectura **ESP32 DevKit V1 (38 pines)**. Permite desacoplar por software el lazo crítico de control PID a alta velocidad ($\ge 1\,\text{kHz}$ en Core 1) de la telemetría en pantalla y captura de pulsadores (Core 0 con FreeRTOS).
+* **Controlador de Doble Núcleo (Dual-Core 240 MHz):** Migración desde microcontroladores básicos a la arquitectura **ESP32 DevKit V1 (38 pines)**. Permite desacoplar por software el lazo crítico de control PID a alta velocidad ($\ge 1\,\text{kHz}$ en Core 1) de la telemetría HTTP Wi-Fi, pantalla TFT y captura de pulsadores (Core 0 con FreeRTOS).
 * **Sistema de Visión Híbrido y Desmontable (8 / 16 Canales):**
   * **Barra Central Fija:** Módulo de 8 fototransistores reflectivos para seguimiento estable en rectas y curvas amplias.
   * **Dos Aletas Laterales Desplegables:** 4 sensores miniatura **QRE1113** por aleta para curvas de 90°, horquillas cerradas y recuperación rápida tras pérdida de trayectoria.
   * **Multiplexado Analógico de Alta Velocidad:** Uso del integrado **CD74HC4067**, leyendo los 16 sensores con un único canal ADC del microcontrolador y 4 líneas digitales de selección.
 * **Topología de Potencia Aislada en 3 Rieles:**
   * Separación física entre la potencia de motores ($V_{BATT}$ directo al driver), la lógica digital (5.0V Buck) y la alimentación analógica sensible (3.3V lineal dedicado) para suprimir ruidos inductivos y evitar reinicios inesperados.
-* **Telemetría Gráfica en Tiempo Real:**
-  * Pantalla a color **TFT IPS de 1.54" (ST7789, 240×240 px)** para calibración interactiva de umbrales blanco/negro en pista, monitorización de voltaje por celda y ajuste dinámico de constantes PID ($K_p, K_i, K_d$).
+* **Telemetría Gráfica Local y en la Nube:**
+  * Pantalla a color **TFT IPS de 1.54" (ST7789, 240×240 px)** para calibración interactiva en pista, estado de batería y perfil activo.
+  * **Telemetría Wi-Fi HTTP + Dashboard Plotly Dash:** El ESP32 arranca con Wi-Fi activado por defecto y envía telemetría en tiempo real vía HTTPS a `https://ssamu.pythonanywhere.com/api/datos/`, visualizable y controlable desde **[https://ssamu.pythonanywhere.com/dashboard/](https://ssamu.pythonanywhere.com/dashboard/)**.
 * **Cumplimiento Estricto de Reglamento:**
   * Diseñado dentro de los límites estándar de competencia internacional ($< 20 \times 15\,\text{cm}$).
 
@@ -175,6 +177,24 @@ Asignación definitiva de pines del **ESP32 DevKit V1 (38 pines)** respetando la
 
 ---
 
+## 🌐 Telemetría Wi-Fi, Dashboard Web y Controles Físicos
+
+### Arquitectura de Telemetría (PythonAnywhere + Plotly Dash)
+El sistema de telemetría remota utiliza **HTTP/HTTPS** (reemplazando la antigua arquitectura local basada en MQTT y Node-RED):
+* **Wi-Fi ON por defecto:** Al encender el ESP32, el módulo Wi-Fi se activa automáticamente en segundo plano (Core 0) sin necesidad de mantener presionado ningún botón en el arranque.
+* **Endpoint de Telemetría:** El firmware realiza peticiones `POST` periódicas (~250 ms) hacia `https://ssamu.pythonanywhere.com/api/datos/` con estado del robot, lecturas de sensores, voltaje de batería y parámetros PID, recibiendo en la respuesta comandos remotos de control y ajuste.
+* **Dashboard Web (Django + Plotly Dash):** Accesible desde cualquier navegador en **[https://ssamu.pythonanywhere.com/dashboard/](https://ssamu.pythonanywhere.com/dashboard/)** (código fuente del servidor en `server/`).
+
+### Comportamiento de los Pulsadores Físicos (`GPIO32` / `GPIO33`)
+Ambos pulsadores operan activos en bajo (`LOW`, con pull-up externo de $10\,\text{k}\Omega$ a $VCC_{3V3}$ y debounce por software):
+
+| Botón | Pin | Pulsación Corta ($\ge 40\,\text{ms}$) | Pulsación Larga |
+| :--- | :--- | :--- | :--- |
+| **`BTN_CALIB`** | `GPIO32` | Inicia o finaliza la calibración de sensores (`IDLE`/`READY` $\leftrightarrow$ `CALIBRATING`); en otros modos regresa a `IDLE`. | $\ge 1500\,\text{ms}$: Invierte la polaridad de detección de línea (línea negra vs. línea blanca). |
+| **`BTN_START`** | `GPIO33` | Inicia o detiene la carrera (`RUNNING` $\leftrightarrow$ `IDLE`). | $\ge 700\,\text{ms}$ (en `IDLE`/`READY`): Cicla entre los perfiles PID almacenados en memoria no volátil (NVS). |
+
+---
+
 ## 🏗️ Arquitectura Mecánica y Modular (Estructura de Pisos)
 
 Siguiendo el estándar de los vehículos autónomos de competición, el diseño desacopla la altura de sensado de la altura de tracción mediante una estructura modular de **3 niveles**:
@@ -232,9 +252,12 @@ Para especificaciones detalladas de cada elemento comercial, dimensiones e imág
 │   ├── guia_placa_sensores_8ch.md          # Diseño de la Placa de Sensores (8 canales + conector J_MAIN 7p)
 │   ├── diylc/                              # Layouts de placa perforada en DIY Layout Creator (.diy)
 │   └── esquematico/                        # SCH_IDLine_2026-09-21.json (Esquemático base en EasyEDA)
-├── firmware/                               # Código fuente del ESP32 (próxima fase)
-├── tools/                                  # Scripts de soporte y auditoría de netlist
-│   └── easyeda_audit/                      # analyzer.py y netlist_report.md
+├── firmware/                               # Código fuente del ESP32 (PlatformIO / Dual-Core FreeRTOS)
+├── server/                                 # Backend Django + Plotly Dash para PythonAnywhere
+├── tools/                                  # Scripts de soporte, auditoría y utilidades
+│   ├── dump_runs.py                        # Descarga de caja negra por puerto serial
+│   ├── easyeda_audit/                      # analyzer.py y netlist_report.md
+│   └── ...                                 # Scripts legados de MQTT/Node-RED (obsoletos)
 └── reference/                              # Material externo de referencia (ignorado por defecto)
     └── idline_original/                    # Repositorio original IDLine (ESP32-C3/S2)
 ```

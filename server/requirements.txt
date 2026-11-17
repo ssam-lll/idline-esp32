@@ -1,0 +1,6 @@
+django>=4.2,<5.2
+djangorestframework>=3.14.0
+dash>=2.14.0
+dash-bootstrap-components>=1.5.0
+plotly>=5.18.0
+werkzeug>=3.0.0

@@ -22,6 +22,7 @@ private:
 
     int16_t    _last_position;
     LineStatus _last_status;
+    uint32_t   _lost_since_ms;
 
     RobotMode _current_mode;
     uint32_t  _test_start_ms;

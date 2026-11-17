@@ -20,7 +20,8 @@ public:
     void actualizarParametros(const PidTuning& tuning);
     void setGains(float kp, float ki, float kd, int16_t base_speed);
 
-    DriveCommand calcular(int16_t position, LineStatus line_status, float dt_sec, int16_t* out_pid = nullptr);
+    DriveCommand calcular(int16_t position, LineStatus line_status, float dt_sec,
+                          int16_t* out_pid = nullptr, uint32_t line_lost_ms = 0);
 
     const PidTuning& tuning() const { return _tuning; }
 };

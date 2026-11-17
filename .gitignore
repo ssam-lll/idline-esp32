@@ -13,10 +13,13 @@ build/
 *.sublime-project
 *.sublime-workspace
 
-# Python (herramientas en tools/)
+# Python (herramientas en tools/ y server/)
 __pycache__/
 *.py[cod]
 *$py.class
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 .venv/
 venv/
 env/

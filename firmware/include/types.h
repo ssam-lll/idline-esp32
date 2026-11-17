@@ -141,14 +141,24 @@ struct ControlTelemetry {
     }
 };
 
+struct RunSample {
+    uint16_t t_ms;
+    int16_t  pos;
+    int16_t  m1;
+    int16_t  m2;
+    uint8_t  status;
+};
+
 struct SupervisorState {
     SupervisorCommand command;
     uint32_t last_calib_button_ms;
     uint32_t last_start_button_ms;
     bool wifi_enabled;
     bool wifi_connected;
-    bool mqtt_connected;
+    bool http_connected;
     uint8_t active_profile;
+    uint32_t track_id;
+    uint32_t upload_memory_seq;
 };
 
 } // namespace idline

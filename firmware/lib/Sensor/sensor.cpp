@@ -20,7 +20,7 @@ constexpr int32_t  kWeights8[8] = {-3500, -2500, -1500, -500, 500, 1500, 2500, 3
 
 BarraSensores::BarraSensores(Multiplexor& mux, SensorBarMode modo)
     : _mux(mux), _modo(modo), _calib_valida(false), _last_position(0),
-      _last_status(LineStatus::kOnLine), _current_mode(RobotMode::kIdle),
+      _last_status(LineStatus::kOnLine), _lost_since_ms(0), _current_mode(RobotMode::kIdle),
       _test_start_ms(0), _last_calib_seq(0), _last_run_seq(0), _last_remote_seq(0),
       _last_tick_us(0) {
     for (uint8_t i = 0; i < 16; ++i) {
@@ -166,6 +166,7 @@ ControlTelemetry BarraSensores::procesarPaso(const RawSensorFrame& frame,
     } else if (cmd.target_mode != _current_mode) {
         if (cmd.target_mode == RobotMode::kRunning) {
             pid.reset();
+            _lost_since_ms = 0;
         }
         _current_mode = cmd.target_mode;
     }
@@ -208,11 +209,17 @@ ControlTelemetry BarraSensores::procesarPaso(const RawSensorFrame& frame,
         }
         tel.normalized[ch] = norm;
 
-        sum_weighted += static_cast<int32_t>(norm) * kWeights8[i];
-        sum_norm += static_cast<int32_t>(norm);
+        // Suppress white-paper background noise so centroid stays crisp near edges
+        uint16_t weighted_norm = (norm < 60) ? 0 : norm;
+        sum_weighted += static_cast<int32_t>(weighted_norm) * kWeights8[i];
+        sum_norm += static_cast<int32_t>(weighted_norm);
     }
 
+    uint32_t now_ms = millis();
     if (sum_norm < 150) {
+        if (_lost_since_ms == 0) {
+            _lost_since_ms = now_ms;
+        }
         if (_last_position < 0) {
             _last_status = LineStatus::kLostLeft;
             tel.position = -1000;
@@ -221,6 +228,7 @@ ControlTelemetry BarraSensores::procesarPaso(const RawSensorFrame& frame,
             tel.position = 1000;
         }
     } else {
+        _lost_since_ms = 0;
         _last_status = LineStatus::kOnLine;
         int32_t pos3500 = sum_weighted / sum_norm;
         int16_t pos1000 = static_cast<int16_t>(constrain((pos3500 * 2) / 7, -1000, 1000));
@@ -245,9 +253,11 @@ ControlTelemetry BarraSensores::procesarPaso(const RawSensorFrame& frame,
     int16_t pid_out = 0;
     if (_current_mode == RobotMode::kRunning) {
         if (cmd.pid_kp > 0.0f) {
-            pid.setGains(cmd.pid_kp, cmd.pid_ki, cmd.pid_kd, cmd.base_speed);
+            int16_t safe_speed = constrain(cmd.base_speed, static_cast<int16_t>(0), pid.tuning().max_speed);
+            pid.setGains(cmd.pid_kp, cmd.pid_ki, cmd.pid_kd, safe_speed);
         }
-        DriveCommand drive = pid.calcular(tel.position, tel.line_status, dt_sec, &pid_out);
+        uint32_t lost_ms = (_lost_since_ms > 0) ? (now_ms - _lost_since_ms) : 0;
+        DriveCommand drive = pid.calcular(tel.position, tel.line_status, dt_sec, &pid_out, lost_ms);
         motor.aplicar(drive);
     } else if (_current_mode == RobotMode::kRemoteManual) {
         motor.setMotores(cmd.manual_m1, cmd.manual_m2);

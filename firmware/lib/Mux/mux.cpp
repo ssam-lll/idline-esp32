@@ -56,7 +56,13 @@ RawSensorFrame Multiplexor::escanearFrame(uint32_t tick, SensorBarMode mode) {
     }
 
     if ((tick & 0x0F) == 0) {
-        _cached_batt_raw = static_cast<uint16_t>(analogReadMilliVolts(_pinBatt));
+        uint16_t sample = static_cast<uint16_t>(analogReadMilliVolts(_pinBatt));
+        if (_cached_batt_raw == 0) {
+            _cached_batt_raw = sample;
+        } else {
+            _cached_batt_raw = static_cast<uint16_t>(
+                (static_cast<uint32_t>(_cached_batt_raw) * 7U + sample) / 8U);
+        }
     }
     frame.batt_raw = _cached_batt_raw;
 
