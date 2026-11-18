@@ -17,14 +17,14 @@ Este documento presenta el diseño, implementación y validación de una arquite
 ## I. Objetivos
 
 ### A. Objetivo General
-Desarrollar un sistema web de telemetría, reconstrucción de pista asistida por visión artificial y control bidireccional en la nube para un robot seguidor de línea mediante una API REST en Django, Django REST Framework y un dashboard en Plotly Dash desplegados en PythonAnywhere con baja latencia.
+Desarrollar un sistema web de telemetría, reconstrucción de pista asistida por visión artificial y control bidireccional en la nube para un robot seguidor de línea, mediante una API REST en Django, Django REST Framework, integración multimodal con Gemini Vision y un dashboard interactivo en Plotly Dash desplegados en PythonAnywhere, con el fin de recibir, almacenar, visualizar y analizar en tiempo real el comportamiento del robot con baja latencia.
 
 ### B. Objetivos Específicos
-1. **Modelar y estructurar la persistencia de datos** mediante modelos relacionales e índices compuestos en Django sobre SQLite para registrar cada corrida por pista, almacenar las referencias geométricas de pista y gestionar las órdenes pendientes.
-2. **Implementar la validación y recepción de paquetes JSON** mediante serializadores y vistas REST para almacenar la telemetría enviada por el robot y retornar comandos de control en la misma transacción HTTP.
-3. **Integrar extracción multi-vista de pistas con Gemini Vision API** enviando de 2 a 4 fotografías desde esquinas opuestas en una única llamada multimodal para triangular la perspectiva y obtener la polilínea normalizada de la pista real.
-4. **Desarrollar un panel analítico y de mando en tiempo real** mediante Plotly Dash acoplado a Django para monitorear sensores y batería, operar el robot remotamente y alinear la trayectoria odométrica 2D sobre la referencia extraída por IA.
-5. **Optimizar y medir la latencia de respuesta en producción** mediante reutilización de conexión HTTPS, ajuste de conexiones SQLite y actualización selectiva de gráficas para garantizar una comunicación fluida.
+1. **Modelar y estructurar la persistencia de datos** mediante modelos relacionales e índices compuestos en Django sobre SQLite, con el fin de registrar cada corrida por pista, almacenar las referencias geométricas extraídas y gestionar las órdenes pendientes de forma ordenada.
+2. **Implementar la validación y el intercambio bidireccional de paquetes JSON** mediante serializadores y vistas REST en Django, para almacenar la telemetría enviada por el robot y despachar comandos de control en la misma transacción HTTP.
+3. **Integrar la reconstrucción geométrica de la pista real** mediante el envío multimodal de 2 a 4 fotografías desde esquinas opuestas a Gemini Vision API y un ajuste rígido 2D (Kabsch/Procrustes), con el propósito de compensar la perspectiva y contrastar la trayectoria odométrica del robot frente al circuito físico.
+4. **Desarrollar un panel analítico y de mando en tiempo real** mediante Plotly Dash acoplado por WSGI a Django, para monitorear los sensores y la batería, operar el robot remotamente y gestionar visualmente las pistas registradas.
+5. **Optimizar y medir la latencia de comunicación en producción** mediante la reutilización de sesión HTTPS, el ajuste de conexiones SQLite y la actualización selectiva de gráficas, con el fin de garantizar una respuesta fluida y comprobable entre el navegador, el servidor en PythonAnywhere y el robot.
 
 ---
 
