@@ -1,4 +1,4 @@
-# Sistema Web de Telemetría IoT, Control Bidireccional y Visualización en la Nube usando Django y PythonAnywhere
+# Sistema Web de Telemetría IoT, Visión IA Multi-Vista y Control Bidireccional en la Nube usando Django y PythonAnywhere
 
 **Autores:** Samuel David López Rincón, María Fernanda Mora  
 **Programa:** Facultad de Ingeniería, Programa de Ingeniería de Sistemas y Computación  
@@ -8,59 +8,64 @@
 ---
 
 ## Resumen
-Este documento presenta el diseño, implementación y validación de una arquitectura web IoT basada en Django, Django REST Framework y Plotly Dash desplegada en PythonAnywhere para el monitoreo y control remoto de un robot seguidor de línea. Siguiendo el flujo Base de Datos → Modelos → Serializador → Vista → Enrutador → Panel de Administración, el sistema recibe lecturas de sensores, voltaje de batería y estado de motores en formato JSON, despacha comandos de control en la misma respuesta HTTP y reconstruye la trayectoria recorrida por pista sin usar encoders. Tras optimizar la reutilización de conexión HTTPS, indexar las tablas y evitar reconstrucciones innecesarias en el servidor, la latencia percibida pasó de más de 5 segundos a un promedio medido de **347.0 ms** en producción.
+Este documento presenta el diseño, implementación y validación de una arquitectura web IoT basada en Django, Django REST Framework y Plotly Dash desplegada en PythonAnywhere para el monitoreo, reconstrucción visual y control remoto de un robot seguidor de línea. Siguiendo el flujo Base de Datos → Modelos → Serializador → Vista → Enrutador → Panel de Administración, el sistema recibe lecturas de sensores, voltaje de batería y estado de motores en formato JSON, despacha comandos de control en la misma respuesta HTTP, reconstruye la trayectoria recorrida por pista sin encoders y la alinea geométricamente contra una referencia real extraída mediante **Gemini Vision API (`gemini-3.8-flash`)** a partir de 2 a 4 fotografías multi-vista. Tras optimizar la reutilización de conexión HTTPS, indexar las tablas y evitar reconstrucciones innecesarias en el servidor, la latencia percibida pasó de más de 5 segundos a un promedio medido de **347.0 ms** en producción.
 
-**Palabras clave:** *API REST, Django, Django REST Framework, IoT, Plotly Dash, PythonAnywhere, SQLite, Telemetría.*
+**Palabras clave:** *API REST, Django, Django REST Framework, Gemini Vision, IoT, Odometría, Plotly Dash, PythonAnywhere, SQLite, Telemetría.*
 
 ---
 
 ## I. Objetivos
 
 ### A. Objetivo General
-Desarrollar un sistema web de telemetría y control bidireccional en la nube para un robot seguidor de línea mediante una API REST en Django, Django REST Framework y un dashboard en Plotly Dash desplegados en PythonAnywhere con el fin de recibir, almacenar, administrar y visualizar en tiempo real el comportamiento del robot con baja latencia.
+Desarrollar un sistema web de telemetría, reconstrucción de pista asistida por visión artificial y control bidireccional en la nube para un robot seguidor de línea mediante una API REST en Django, Django REST Framework y un dashboard en Plotly Dash desplegados en PythonAnywhere con baja latencia.
 
 ### B. Objetivos Específicos
-1. **Modelar y estructurar la persistencia de datos** mediante modelos relacionales e índices compuestos en Django sobre SQLite para registrar cada corrida por pista y gestionar las órdenes pendientes de forma ordenada.
-2. **Implementar la validación y lógica de recepción de paquetes JSON** mediante serializadores y vistas REST con el fin de almacenar la telemetría enviada por el robot y retornar comandos de control en la misma transacción HTTP.
-3. **Configurar el enrutamiento, administración y despliegue WSGI en PythonAnywhere** mediante URLs dedicadas, registro en el panel de administración y entorno virtual para exponer los endpoints y la interfaz web de forma estable.
-4. **Desarrollar un panel analítico y de mando en tiempo real** mediante Plotly Dash acoplado a Django con el propósito de monitorear los sensores, visualizar el porcentaje de batería, operar el robot remotamente y reconstruir su trayectoria.
-5. **Optimizar y medir la latencia de respuesta en producción** mediante reutilización de conexión HTTPS, ajuste de conexiones SQLite y actualización selectiva de gráficas para garantizar una comunicación fluida entre el navegador y el robot.
+1. **Modelar y estructurar la persistencia de datos** mediante modelos relacionales e índices compuestos en Django sobre SQLite para registrar cada corrida por pista, almacenar las referencias geométricas de pista y gestionar las órdenes pendientes.
+2. **Implementar la validación y recepción de paquetes JSON** mediante serializadores y vistas REST para almacenar la telemetría enviada por el robot y retornar comandos de control en la misma transacción HTTP.
+3. **Integrar extracción multi-vista de pistas con Gemini Vision API** enviando de 2 a 4 fotografías desde esquinas opuestas en una única llamada multimodal para triangular la perspectiva y obtener la polilínea normalizada de la pista real.
+4. **Desarrollar un panel analítico y de mando en tiempo real** mediante Plotly Dash acoplado a Django para monitorear sensores y batería, operar el robot remotamente y alinear la trayectoria odométrica 2D sobre la referencia extraída por IA.
+5. **Optimizar y medir la latencia de respuesta en producción** mediante reutilización de conexión HTTPS, ajuste de conexiones SQLite y actualización selectiva de gráficas para garantizar una comunicación fluida.
 
 ---
 
 ## II. Arquitectura de Software en la Nube
 
-El sistema sigue la arquitectura por capas de Django sobre PythonAnywhere conectada al robot por HTTPS. Como contexto físico mínimo, el nodo ESP32 envía periódicamente sus lecturas en JSON (8 sensores infrarrojos, velocidad PWM de ambos motores y voltaje de batería) y ejecuta las órdenes recibidas.
+El sistema sigue la arquitectura por capas de Django sobre PythonAnywhere conectada al robot por HTTPS. El nodo ESP32 envía periódicamente sus lecturas en JSON (8 sensores infrarrojos, velocidad PWM de ambos motores y voltaje de batería) y ejecuta las órdenes recibidas. De forma paralela, el operador puede cargar fotografías de la pista real desde el navegador para contrastar la trayectoria del robot.
 
 ```mermaid
 flowchart TD
     A["Nodo ESP32 (JSON por HTTPS)"] -->|POST /api/datos/| B["Enrutador (urls.py)"]
     B --> C["Vista API (views.py)"]
     C <-->|Validación JSON| D["Serializador (serializers.py)"]
-    C <-->|ORM + Índices| E["Modelos y Base de Datos (models.py / SQLite)"]
+    C <-->|ORM + Índices| E["Modelos y SQLite (models.py)"]
+    U["Usuario (2-4 Fotos de Pista)"] -->|POST /api/pista/referencia/| B
+    C -->|Multimodal| V["Cliente Gemini Vision (vision_ai.py)"]
+    V -->|Polilínea 0..1| E
     E --> F["Panel Admin (/admin/)"]
-    E --> G["Módulo de Odometría (odometry.py)"]
+    E --> G["Odometría + Alineación 2D (odometry.py)"]
     G --> H["Dashboard Web (Plotly Dash /dashboard/)"]
 ```
 
 ### A. Base de Datos y Modelos (`models.py`)
-La persistencia en SQLite se organiza en tres modelos:
-- **`LecturaSensor`:** Registra `dispositivo_id`, `track_id`, arreglo de sensores, PWM de motores `m1` y `m2`, posición sobre la línea, voltaje `vbat_mv`, modo de operación, ráfagas de muestras y `timestamp`. Incluye un índice compuesto en `(dispositivo_id, track_id, timestamp)` para acelerar la consulta de pistas.
+La persistencia en SQLite se organiza en cuatro modelos principales:
+- **`LecturaSensor`:** Registra `dispositivo_id`, `track_id`, arreglo `sensores`, PWM de motores `m1` y `m2`, `posicion`, voltaje `vbat_mv`, `modo`, ráfagas `muestras` y `timestamp`. Incluye índices compuestos en `(dispositivo_id, -id)` y `(dispositivo_id, track_id, id)` para acelerar las consultas por pista.
 - **`EstadoRobot`:** Guarda la pista activa (`active_track_id`) y la fecha de última actualización.
 - **`ComandoPendiente`:** Cola de órdenes remotas indexada por `(dispositivo_id, ejecutado, creado)`.
+- **`PistaReferencia`:** Almacena por `(device_id, track_id)` la polilínea normalizada `points_json` (`[0.0, 1.0]`), el indicador de circuito cerrado (`closed`), la cantidad de vistas procesadas (`photo_count`) y metadatos de extracción sin almacenar imágenes binarias pesadas en SQLite.
 
-### B. Serializador, Vista y Enrutador (`serializers.py`, `views.py`, `urls.py`)
+### B. Serializador, Vistas, Visión IA y Enrutador (`serializers.py`, `views.py`, `vision_ai.py`, `urls.py`)
 - **Serializador:** `LecturaSensorSerializer` traduce y valida el JSON entrante hacia objetos del ORM de Django.
-- **Vista:** `POST /api/datos/` guarda la telemetría recibida y, en la misma respuesta HTTP, consulta y marca como ejecutados hasta 5 comandos pendientes. Con esto el robot no necesita abrir una segunda petición periódica solo para consultar órdenes. El backend también expone rutas para encolar comandos, consultar el estado y obtener la trayectoria reconstruida.
-- **Enrutador y Admin:** `urls.py` mapea las rutas bajo `/api/` y `admin.py` registra los tres modelos con filtros por dispositivo, pista y modo.
+- **Telemetría y Comandos (`POST /api/datos/`):** Guarda la telemetría recibida y, en la misma respuesta HTTP, consulta y marca como ejecutados hasta 5 comandos pendientes, evitando una segunda petición periódica de polling desde el robot.
+- **Visión IA Multi-Vista (`POST/GET /api/pista/referencia/` y `vision_ai.py`):** Implementa un cliente REST ligero usando únicamente la librería estándar de Python (`urllib.request`, `json`, `base64`), leyendo `GEMINI_API_KEY` desde variables de entorno WSGI y soportando cargas de hasta **20 MB** (`DATA_UPLOAD_MAX_MEMORY_SIZE` en `settings.py`). Recibe de 2 a 4 fotografías tomadas desde esquinas opuestas, las envía en una única llamada multimodal a `gemini-3.8-flash` (timeout configurable de 120 s) usando las líneas de baldosas y bordes del área blanca para compensar la perspectiva, y valida/acota las coordenadas JSON al rango `[0.0, 1.0]`.
+- **Enrutador y Admin:** `urls.py` mapea las rutas bajo `/api/` y `admin.py` registra los modelos con filtros por dispositivo, pista y modo.
 
-### C. Despliegue WSGI en PythonAnywhere y Dashboard (`Plotly Dash`)
-El archivo `wsgi_pythonanywhere.py` integra la aplicación Django (`/api/` y `/admin/`) junto con el servidor Flask/Dash (`/dashboard/`) dentro del entorno virtual `IoTAPI`.
+### C. Despliegue WSGI, Alineación Geométrica 2D (`odometry.py`) y Dashboard (`Plotly Dash`)
+El archivo `wsgi_pythonanywhere.py` integra Django (`/api/` y `/admin/`) junto con Flask/Dash (`/dashboard/`) dentro del entorno virtual `IoTAPI`.
 
-En el dashboard se implementaron:
-1. **Indicadores en vivo:** Estado `ONLINE/OFFLINE`, porcentaje y voltaje de batería, modo actual y valores de motores.
-2. **Reconstrucción de pista (`odometry.py`):** Estima el desplazamiento $(x, y)$ y la distancia recorrida a partir de los comandos PWM compensados por el voltaje real de la batería, recortando los puntos iniciales en reposo.
-3. **Control e historial:** Botones de arranque y parada, perfiles de velocidad, control manual con respuesta visual inmediata en el navegador, creación y eliminación de pistas, gráfico de barras de los 8 sensores e historial de motores y error de línea.
+En el módulo de odometría y visualización se implementaron:
+1. **Reconstrucción y Alineación 2D (`odometry.py`):** `reconstruct_trajectory()` estima el desplazamiento $(x, y)$ a partir de los comandos PWM compensados por el voltaje real de la batería. Luego, `align_trajectory_to_reference()` aplica un ajuste de similitud 2D (**Kabsch/Procrustes**: traslación, rotación y escala uniforme mediante `math` estándar, con remuestreo por longitud de arco) para superponer la trayectoria del robot sobre la polilínea de `PistaReferencia` sin deformar curvas, permitiendo detectar deriva o sobreviraje real.
+2. **Carga Multi-Vista y Limpieza Selectiva:** El panel incorpora `SUBIR 2-4 FOTOS DE PISTA` (`dcc.Upload(multiple=True)`), el botón **`BORRAR REFERENCIA IA`** para limpiar únicamente la referencia visual de la pista activa sin perder telemetría, y `ELIMINAR PISTA` para depurar lecturas y referencias asociadas.
+3. **Indicadores y Control en Vivo:** Estado `ONLINE/OFFLINE`, porcentaje y voltaje de batería, perfiles de velocidad, control manual con feedback inmediato, barras de los 8 sensores e historial de motores y error de línea.
 
 ---
 
@@ -92,15 +97,15 @@ Resumen: min = 299.1 ms | promedio = 347.0 ms | p95 = 445.2 ms
 
 ![Latencia medida en producción](assets/evidencia_latencia_api.png)
 
-### B. Visualización y Operación en Producción
-Captura del dashboard en operación mostrando los indicadores de estado, lectura de batería, barras de sensores y reconstrucción de pista en PythonAnywhere:
+### B. Visualización, Pista Real (IA) y Operación en Producción
+Captura del dashboard en operación en PythonAnywhere mostrando los indicadores de estado, lectura de batería, barras de sensores y la reconstrucción de la pista de la universidad extraída con Gemini Vision:
 
-![Dashboard en producción](assets/evidencia_dashboard.png)
+![Dashboard en producción con Pista Real (IA)](assets/evidencia_dashboard.png)
 
 ---
 
 ## IV. Conclusiones
 
-1. **Arquitectura Django REST en la Nube:** Estructurar el servidor en modelos, serializadores, vistas, enrutador y panel administrativo permitió centralizar la recepción de telemetría y el despacho de comandos en una sola transacción HTTP, conservando la trazabilidad por pista en SQLite.
-2. **Reducción Comprobable de Latencia:** Al reutilizar la sesión HTTPS, indexar las consultas, ajustar `CONN_MAX_AGE = 0` para PythonAnywhere y evitar reconstrucciones innecesarias de gráficas en el worker único de WSGI, la respuesta de la API bajó de más de 5 segundos a un promedio medido de **347.0 ms**.
-3. **Control y Diagnóstico Unificados:** La integración de Plotly Dash junto a Django sobre PythonAnywhere permite operar el robot en vivo, monitorear el nivel de batería y analizar gráficamente el recorrido y comportamiento de los sensores desde cualquier navegador.
+1. **Arquitectura Django REST en la Nube:** Estructurar el servidor en modelos, serializadores, vistas, enrutador y panel administrativo permitió centralizar la recepción de telemetría, el despacho de comandos en una sola transacción HTTP y la persistencia de referencias por pista en SQLite.
+2. **Reducción Comprobable de Latencia:** Al reutilizar la sesión HTTPS, indexar las consultas, ajustar `CONN_MAX_AGE = 0` para PythonAnywhere y evitar reconstrucciones innecesarias de gráficas en WSGI, la respuesta de la API bajó de más de 5 segundos a un promedio medido de **347.0 ms**.
+3. **Visión IA Multi-Vista y Diagnóstico Geométrico:** Combinar Gemini Vision multi-vista (`gemini-3.8-flash`) con alineación rígida 2D (Kabsch/Procrustes) permite comparar el recorrido odométrico sin encoders directamente contra la geometría real de la pista universitaria, facilitando el ajuste fino del controlador PID.
